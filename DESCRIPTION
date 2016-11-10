@@ -1,0 +1,10 @@
+Package: GENV
+Type: Package
+Title: Groupwise Envelope model
+Version: 1.0
+Date: 2016-10-25
+Author: Yeonhee Park, Zhihua Su and Hongtu Zhu
+Maintainer: Yeonhee Park <YPark3@mdanderson.org>
+Description: This is a package for fitting the groupwise envelope model.
+Suggests: MASS
+License: GPL-2
