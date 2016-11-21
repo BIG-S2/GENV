@@ -131,6 +131,7 @@ GE <- function(A) {
 
 genv <- function(X, Y, Z, u){
   
+
   XX <- as.factor(X)
   Y <- as.matrix(Y)
   Z <- as.matrix(Z)
@@ -139,214 +140,234 @@ genv <- function(X, Y, Z, u){
   r <- a[2]
   c <- ncol(Z)
   p <- nlevels(XX)
-  ncumx <- c()
-  for (i in 1:p){
-    ncumx[i] <- length(which(XX==i-1))
-  }
-  ncum <- cumsum(ncumx)
-  ng <- diff(c(0,ncum))
-  sortx <- sort(X, index.return=T)
-  Xs <- sortx$x
-  ind <- sortx$ix
-  Ys <- Y[ind,]
-  Zs <- Z[ind,]
-  mY <- apply(Y, 2, mean)
-  sigres = sigYcg = sigresc <- list(length=p)
-  mYg <- matrix(rep(0, r*p), ncol=p)
-  mZg <- matrix(rep(0, c*p), ncol=p)
-  for (i in 1:p){
-    if(i>1){
-      yy <- Ys[(ncum[i-1]+1):ncum[i],]
-      zz <- Zs[(ncum[i-1]+1):ncum[i],]
-      sigres[[i]]<- cov(yy)*(ng[i]-1)/ng[i]
-      mYg[,i] <- apply(yy, 2, mean)
-      mZg[,i] <- apply(zz, 2, mean)
-      Ycg <- scale(yy, center=T, scale=F)
-      Zcg <- scale(zz, center=T, scale=F)
-      QXC <- diag(ng[i]) - Zcg%*%solve(t(Zcg)%*%Zcg)%*%t(Zcg)
-      sigYcg[[i]] <- t(Ycg)%*%Ycg
-      sigresc[[i]] <- t(Ycg)%*%QXC%*%Ycg/ng[i]
-    }else{
-      yy <- Ys[1:ncum[i],]
-      zz <- Zs[1:ncum[i],]
-      sigres[[i]]<- cov(yy)*(ng[i]-1)/ng[i]
-      mYg[,i] <- apply(yy, 2, mean)
-      mZg[,i] <- apply(zz, 2, mean)
-      Ycg <- scale(yy, center=T, scale=F)
-      Zcg <- scale(zz, center=T, scale=F)
-      QXC <- diag(ng[i]) - Zcg%*%solve(t(Zcg)%*%Zcg)%*%t(Zcg)
-      sigYcg[[i]] <- t(Ycg)%*%Ycg
-      sigresc[[i]] <- t(Ycg)%*%QXC%*%Ycg/ng[i]
-    }
-  }
-  sigY <- cov(Y)*(n-1)/n
-  eigtemY <- eigen(sigY)$values
-  logDetSigY <- log(prod(eigtemY[eigtemY > 0]))
-  invsigY <- solve(sigY)
   
-  sigYc <- matrix(rep(0, r*r), ncol=r)
-  for (i in 1:p){
-    sigYc <- sigYc + sigYcg[[i]]/n
-  }
-  eigtemYc <- eigen(sigYc)$values
-  logDetSigYc <- log(prod(eigtemYc[eigtemYc > 0]))
-  invsigYc <- solve(sigYc)
-  
-  U = M <- list(length=p)
-  for (i in 1:p){
-    M[[i]] <- sigresc[[i]]
-    U[[i]] <-  sigYc - M[[i]]
-  }
-  MU <- sigYc
-  tmp <- genvMU(M, U, MU, u, n, ng, p)
-  Gammahat <- tmp$Gammahat
-  Gamma0hat <- tmp$Gamma0hat
-  
-  
-  if(u==0){
-    
-    Yfit <- matrix(rep(0, n*r), ncol=r)
-    Sigmahat <- sigYc
-    etahat <- NULL
-    Omegahat <- NULL
-    Omega0hat <- sigYc
-    betahat <- list(length=p)
-    for (i in 1:p){
-      betahat[[i]] <- matrix(rep(0, r*c), ncol=c)
-    }
-    muhat <- mYg
-    bb <- rep(0, p)
-    for (i in 1:p){
-      if(i>1){
-        yy <- Ys[(ncum[i-1]+1):ncum[i],]
-        Ycg <- scale(yy, center=T, scale=F)
-        bb[i] <- sum(diag(Ycg%*%solve(sigYc)%*%t(Ycg)))
-      }else{
-        yy <- Ys[1:ncum[i],]
-        Ycg <- scale(yy, center=T, scale=F)
-        bb[i] <- sum(diag(Ycg%*%solve(sigYc)%*%t(Ycg)))
-      }
-    }
-    b <- sum(bb)
-    loglik <- -n*r*log(2*pi)/2 - n*logDetSigYc/2 - b/2
-    paranum <- p*r + p*(r-u)*(r-u+1)/2
-    
-  }else if (u==r){
-    
-    Sigmahat <- sigresc 
-    aa <- rep(0, p)
-    etahat <- list(length=p)
-    for (i in 1:p){
-      if(i>1){
-        yy <- Ys[(ncum[i-1]+1):ncum[i],]
-        zz <- Zs[(ncum[i-1]+1):ncum[i],]
-        Ycg <- scale(yy, center=T, scale=F)
-        Zcg <- scale(zz, center=T, scale=F)
-        etahat[[i]] <- t(Ycg)%*%Zcg%*%solve(t(Zcg)%*%Zcg)
-        QXC <- diag(ng[i]) - Zcg%*%solve(t(Zcg)%*%Zcg)%*%t(Zcg)
-        aa[i] <- sum(diag(QXC%*%Ycg%*%solve(sigresc[[i]])%*%t(Ycg)%*%QXC))
-      }else{
-        yy <- Ys[1:ncum[i],]
-        zz <- Zs[1:ncum[i],]
-        Ycg <- scale(yy, center=T, scale=F)
-        Zcg <- scale(zz, center=T, scale=F)
-        etahat[[i]] <- t(Ycg)%*%Zcg%*%solve(t(Zcg)%*%Zcg)
-        QXC <- diag(ng[i]) - Zcg%*%solve(t(Zcg)%*%Zcg)%*%t(Zcg)
-        aa[i] <- sum(diag(QXC%*%Ycg%*%solve(sigresc[[i]])%*%t(Ycg)%*%QXC))
-      }
-    }
-    a <- sum(aa)
-    Omegahat <- sigresc
-    Omega0hat <- NULL
-    betahat <- etahat
-    muhat <- mYg
-    for (i in 1:p){
-      muhat[,i]<- muhat[,i] - betahat[[i]]%*%mZg[,i]
-    }
-    Yfit <- matrix(rep(0, n*r), ncol=r)
-    for (i in 1:p){
-      if(i>1){
-        Yfit[ind[(ncum[i-1]+1):ncum[i]],] <- rep(1,ng[i])%*%t(muhat[,i]) +
-          Z[ind[(ncum[i-1]+1):ncum[i]],]%*% t(betahat[[i]]) 
-      }else{
-        Yfit[ind[1:ncum[1]],] <- rep(1,ng[1])%*%t(muhat[,1]) +
-          Z[ind[1:ncum[1]],]%*% t(betahat[[1]]) 
-      }
-    }
-    loglik <- -n*r*log(2*pi)/2 - a/2
-    for (i in 1:p){
-      eig <- eigen(sigresc[[i]])
-      loglik <- loglik - ng[i]*sum(log(eig$values))/2
-    }
-    paranum <- p*r + p*u*c + u*(r-u) + p*u*(u+1)/2 + (r-u)*(r-u+1)/2
-    
+  if(u<0 | u>r){
+    print("u should be an interger between 0 and r")
+    skip<-1
   }else{
+    skip<-0
+  }
+  if (n<=c){
+    print("This works when p < n")
+    skip<-1
+  }else{
+    skip <-0
+  }
+  
+  if(skip==0){
     
-    Omega0hat  <- t(Gamma0hat)%*%sigYc%*%Gamma0hat
-    Sigmahat = Omegahat <- list(length=p)
-    for(i in 1:p){
-      Omegahat[[i]] <- t(Gammahat)%*%sigresc[[i]]%*%Gammahat
-      Sigmahat[[i]] <- Gammahat%*%Omegahat[[i]]%*%t(Gammahat) +
-        Gamma0hat%*%Omega0hat%*%t(Gamma0hat)
+    ncumx <- c()
+#     for (i in 1:p){
+#       ncumx[i] <- length(which(XX==i-1))
+#     }
+    for (i in 1:p){
+      ncumx[i] <- length(which(XX==as.numeric(levels(XX)[i])))
     }
-    aa = bb <- rep(0, p)
-    etahat = betahat <- list(length=p)
+    ncum <- cumsum(ncumx)
+    ng <- diff(c(0,ncum))
+    sortx <- sort(X, index.return=T)
+    Xs <- sortx$x
+    ind <- sortx$ix
+    Ys <- Y[ind,]
+    Zs <- Z[ind,]
+    mY <- apply(Y, 2, mean)
+    sigres = sigYcg = sigresc <- list(length=p)
+    mYg <- matrix(rep(0, r*p), ncol=p)
+    mZg <- matrix(rep(0, c*p), ncol=p)
     for (i in 1:p){
       if(i>1){
         yy <- Ys[(ncum[i-1]+1):ncum[i],]
         zz <- Zs[(ncum[i-1]+1):ncum[i],]
+        sigres[[i]]<- cov(yy)*(ng[i]-1)/ng[i]
+        mYg[,i] <- apply(yy, 2, mean)
+        mZg[,i] <- apply(zz, 2, mean)
         Ycg <- scale(yy, center=T, scale=F)
         Zcg <- scale(zz, center=T, scale=F)
-        etahat[[i]] <- t(Gammahat)%*%t(Ycg)%*%Zcg%*%solve(t(Zcg)%*%Zcg)
-        betahat[[i]] <- Gammahat%*%etahat[[i]]
         QXC <- diag(ng[i]) - Zcg%*%solve(t(Zcg)%*%Zcg)%*%t(Zcg)
-        aa[i] <- sum(diag(QXC%*%Ycg%*%Gammahat%*%solve(t(Gammahat)%*%sigresc[[i]]%*%Gammahat)%*%t(Gammahat)%*%t(Ycg)%*%QXC))
-        bb[i] <- sum(diag(Ycg%*%Gamma0hat%*%solve(t(Gamma0hat)%*%sigYc%*%Gamma0hat)%*%t(Gamma0hat)%*%t(Ycg)))
+        sigYcg[[i]] <- t(Ycg)%*%Ycg
+        sigresc[[i]] <- t(Ycg)%*%QXC%*%Ycg/ng[i]
       }else{
         yy <- Ys[1:ncum[i],]
         zz <- Zs[1:ncum[i],]
+        sigres[[i]]<- cov(yy)*(ng[i]-1)/ng[i]
+        mYg[,i] <- apply(yy, 2, mean)
+        mZg[,i] <- apply(zz, 2, mean)
         Ycg <- scale(yy, center=T, scale=F)
         Zcg <- scale(zz, center=T, scale=F)
-        etahat[[i]] <- t(Gammahat)%*%t(Ycg)%*%Zcg%*%solve(t(Zcg)%*%Zcg)
-        betahat[[i]] <- Gammahat%*%etahat[[i]]
         QXC <- diag(ng[i]) - Zcg%*%solve(t(Zcg)%*%Zcg)%*%t(Zcg)
-        aa[i] <- sum(diag(QXC%*%Ycg%*%Gammahat%*%solve(t(Gammahat)%*%sigresc[[i]]%*%Gammahat)%*%t(Gammahat)%*%t(Ycg)%*%QXC))
-        bb[i] <- sum(diag(Ycg%*%Gamma0hat%*%solve(t(Gamma0hat)%*%sigYc%*%Gamma0hat)%*%t(Gamma0hat)%*%t(Ycg)))
+        sigYcg[[i]] <- t(Ycg)%*%Ycg
+        sigresc[[i]] <- t(Ycg)%*%QXC%*%Ycg/ng[i]
       }
     }
-    muhat <- mYg
-    for (i in 1:p){
-      muhat[,i]<- muhat[,i] - betahat[[i]]%*%mZg[,i]
-    }
-    Yfit <- matrix(rep(0, n*r), ncol=r)
-    for (i in 1:p){
-      if(i>1){
-        Yfit[ind[(ncum[i-1]+1):ncum[i]],] <- rep(1,ng[i])%*%t(muhat[,i]) +
-          Z[ind[(ncum[i-1]+1):ncum[i]],]%*% t(betahat[[i]]) 
-      }else{
-        Yfit[ind[1:ncum[1]],] <- rep(1,ng[1])%*%t(muhat[,1]) +
-          Z[ind[1:ncum[1]],]%*% t(betahat[[1]]) 
-      }
-    }
-    a <- sum(aa)
-    b <- sum(bb)
-    eig2 <- eigen(t(Gamma0hat)%*%sigYc%*%Gamma0hat)
-    r1 <- sum(log(eig2$values))
-    loglik <- -n*r*log(2*pi)/2 - a/2 -b/2 - n*r1/2
-    for (i in 1:p){
-      eig <- eigen(t(Gammahat)%*%sigresc[[i]]%*%Gammahat)
-      loglik <- loglik - ng[i]*sum(log(eig$values))/2
-    }
-    paranum <- p*r + p*u*c + u*(r-u) + p*u*(u+1)/2 + (r-u)*(r-u+1)/2
+    sigY <- cov(Y)*(n-1)/n
+    eigtemY <- eigen(sigY)$values
+    logDetSigY <- log(prod(eigtemY[eigtemY > 0]))
+    invsigY <- solve(sigY)
     
+    sigYc <- matrix(rep(0, r*r), ncol=r)
+    for (i in 1:p){
+      sigYc <- sigYc + sigYcg[[i]]/n
+    }
+    eigtemYc <- eigen(sigYc)$values
+    logDetSigYc <- log(prod(eigtemYc[eigtemYc > 0]))
+    invsigYc <- solve(sigYc)
+    
+    U = M <- list(length=p)
+    for (i in 1:p){
+      M[[i]] <- sigresc[[i]]
+      U[[i]] <-  sigYc - M[[i]]
+    }
+    MU <- sigYc
+    tmp <- genvMU(M, U, MU, u, n, ng, p)
+    Gammahat <- tmp$Gammahat
+    Gamma0hat <- tmp$Gamma0hat
+    
+    
+    if(u==0){
+      
+      Yfit <- matrix(rep(0, n*r), ncol=r)
+      Sigmahat <- sigYc
+      etahat <- NULL
+      Omegahat <- NULL
+      Omega0hat <- sigYc
+      betahat <- list(length=p)
+      for (i in 1:p){
+        betahat[[i]] <- matrix(rep(0, r*c), ncol=c)
+      }
+      muhat <- mYg
+      bb <- rep(0, p)
+      for (i in 1:p){
+        if(i>1){
+          yy <- Ys[(ncum[i-1]+1):ncum[i],]
+          Ycg <- scale(yy, center=T, scale=F)
+          bb[i] <- sum(diag(Ycg%*%solve(sigYc)%*%t(Ycg)))
+        }else{
+          yy <- Ys[1:ncum[i],]
+          Ycg <- scale(yy, center=T, scale=F)
+          bb[i] <- sum(diag(Ycg%*%solve(sigYc)%*%t(Ycg)))
+        }
+      }
+      b <- sum(bb)
+      loglik <- -n*r*log(2*pi)/2 - n*logDetSigYc/2 - b/2
+      paranum <- p*r + p*(r-u)*(r-u+1)/2
+      
+    }else if (u==r){
+      
+      Sigmahat <- sigresc 
+      aa <- rep(0, p)
+      etahat <- list(length=p)
+      for (i in 1:p){
+        if(i>1){
+          yy <- Ys[(ncum[i-1]+1):ncum[i],]
+          zz <- Zs[(ncum[i-1]+1):ncum[i],]
+          Ycg <- scale(yy, center=T, scale=F)
+          Zcg <- scale(zz, center=T, scale=F)
+          etahat[[i]] <- t(Ycg)%*%Zcg%*%solve(t(Zcg)%*%Zcg)
+          QXC <- diag(ng[i]) - Zcg%*%solve(t(Zcg)%*%Zcg)%*%t(Zcg)
+          aa[i] <- sum(diag(QXC%*%Ycg%*%solve(sigresc[[i]])%*%t(Ycg)%*%QXC))
+        }else{
+          yy <- Ys[1:ncum[i],]
+          zz <- Zs[1:ncum[i],]
+          Ycg <- scale(yy, center=T, scale=F)
+          Zcg <- scale(zz, center=T, scale=F)
+          etahat[[i]] <- t(Ycg)%*%Zcg%*%solve(t(Zcg)%*%Zcg)
+          QXC <- diag(ng[i]) - Zcg%*%solve(t(Zcg)%*%Zcg)%*%t(Zcg)
+          aa[i] <- sum(diag(QXC%*%Ycg%*%solve(sigresc[[i]])%*%t(Ycg)%*%QXC))
+        }
+      }
+      a <- sum(aa)
+      Omegahat <- sigresc
+      Omega0hat <- NULL
+      betahat <- etahat
+      muhat <- mYg
+      for (i in 1:p){
+        muhat[,i]<- muhat[,i] - betahat[[i]]%*%mZg[,i]
+      }
+      Yfit <- matrix(rep(0, n*r), ncol=r)
+      for (i in 1:p){
+        if(i>1){
+          Yfit[ind[(ncum[i-1]+1):ncum[i]],] <- rep(1,ng[i])%*%t(muhat[,i]) +
+            Z[ind[(ncum[i-1]+1):ncum[i]],]%*% t(betahat[[i]]) 
+        }else{
+          Yfit[ind[1:ncum[1]],] <- rep(1,ng[1])%*%t(muhat[,1]) +
+            Z[ind[1:ncum[1]],]%*% t(betahat[[1]]) 
+        }
+      }
+      loglik <- -n*r*log(2*pi)/2 - a/2
+      for (i in 1:p){
+        eig <- eigen(sigresc[[i]])
+        loglik <- loglik - ng[i]*sum(log(eig$values))/2
+      }
+      paranum <- p*r + p*u*c + u*(r-u) + p*u*(u+1)/2 + (r-u)*(r-u+1)/2
+      
+    }else{
+      
+      Omega0hat  <- t(Gamma0hat)%*%sigYc%*%Gamma0hat
+      Sigmahat = Omegahat <- list(length=p)
+      for(i in 1:p){
+        Omegahat[[i]] <- t(Gammahat)%*%sigresc[[i]]%*%Gammahat
+        Sigmahat[[i]] <- Gammahat%*%Omegahat[[i]]%*%t(Gammahat) +
+          Gamma0hat%*%Omega0hat%*%t(Gamma0hat)
+      }
+      aa = bb <- rep(0, p)
+      etahat = betahat <- list(length=p)
+      for (i in 1:p){
+        if(i>1){
+          yy <- Ys[(ncum[i-1]+1):ncum[i],]
+          zz <- Zs[(ncum[i-1]+1):ncum[i],]
+          Ycg <- scale(yy, center=T, scale=F)
+          Zcg <- scale(zz, center=T, scale=F)
+          etahat[[i]] <- t(Gammahat)%*%t(Ycg)%*%Zcg%*%solve(t(Zcg)%*%Zcg)
+          betahat[[i]] <- Gammahat%*%etahat[[i]]
+          QXC <- diag(ng[i]) - Zcg%*%solve(t(Zcg)%*%Zcg)%*%t(Zcg)
+          aa[i] <- sum(diag(QXC%*%Ycg%*%Gammahat%*%solve(t(Gammahat)%*%sigresc[[i]]%*%Gammahat)%*%t(Gammahat)%*%t(Ycg)%*%QXC))
+          bb[i] <- sum(diag(Ycg%*%Gamma0hat%*%solve(t(Gamma0hat)%*%sigYc%*%Gamma0hat)%*%t(Gamma0hat)%*%t(Ycg)))
+        }else{
+          yy <- Ys[1:ncum[i],]
+          zz <- Zs[1:ncum[i],]
+          Ycg <- scale(yy, center=T, scale=F)
+          Zcg <- scale(zz, center=T, scale=F)
+          etahat[[i]] <- t(Gammahat)%*%t(Ycg)%*%Zcg%*%solve(t(Zcg)%*%Zcg)
+          betahat[[i]] <- Gammahat%*%etahat[[i]]
+          QXC <- diag(ng[i]) - Zcg%*%solve(t(Zcg)%*%Zcg)%*%t(Zcg)
+          aa[i] <- sum(diag(QXC%*%Ycg%*%Gammahat%*%solve(t(Gammahat)%*%sigresc[[i]]%*%Gammahat)%*%t(Gammahat)%*%t(Ycg)%*%QXC))
+          bb[i] <- sum(diag(Ycg%*%Gamma0hat%*%solve(t(Gamma0hat)%*%sigYc%*%Gamma0hat)%*%t(Gamma0hat)%*%t(Ycg)))
+        }
+      }
+      muhat <- mYg
+      for (i in 1:p){
+        muhat[,i]<- muhat[,i] - betahat[[i]]%*%mZg[,i]
+      }
+      Yfit <- matrix(rep(0, n*r), ncol=r)
+      for (i in 1:p){
+        if(i>1){
+          Yfit[ind[(ncum[i-1]+1):ncum[i]],] <- rep(1,ng[i])%*%t(muhat[,i]) +
+            Z[ind[(ncum[i-1]+1):ncum[i]],]%*% t(betahat[[i]]) 
+        }else{
+          Yfit[ind[1:ncum[1]],] <- rep(1,ng[1])%*%t(muhat[,1]) +
+            Z[ind[1:ncum[1]],]%*% t(betahat[[1]]) 
+        }
+      }
+      a <- sum(aa)
+      b <- sum(bb)
+      eig2 <- eigen(t(Gamma0hat)%*%sigYc%*%Gamma0hat)
+      r1 <- sum(log(eig2$values))
+      loglik <- -n*r*log(2*pi)/2 - a/2 -b/2 - n*r1/2
+      for (i in 1:p){
+        eig <- eigen(t(Gammahat)%*%sigresc[[i]]%*%Gammahat)
+        loglik <- loglik - ng[i]*sum(log(eig$values))/2
+      }
+      paranum <- p*r + p*u*c + u*(r-u) + p*u*(u+1)/2 + (r-u)*(r-u+1)/2
+      
+    }
+    
+    return(list(Yfit=Yfit, Gamma = Gammahat, Gamma0 = Gamma0hat,
+                Sigma = Sigmahat,
+                eta = etahat, Omega = Omegahat,
+                Omega0 = Omega0hat, beta = betahat,
+                mu = muhat, loglik = loglik,
+                paranum = paranum, ng = ng))
   }
-  
-  return(list(Yfit=Yfit, Gamma = Gammahat, Gamma0 = Gamma0hat,
-              Sigma = Sigmahat,
-              eta = etahat, Omega = Omegahat,
-              Omega0 = Omega0hat, beta = betahat,
-              mu = muhat, loglik = loglik,
-              paranum = paranum, ng = ng))
 }
 
 
@@ -360,82 +381,99 @@ genvasy <- function(X, Y, Z, u){
   r <- a[2]
   c <- ncol(Z)
   p <- nlevels(XX)
-  ncumx <- c()
-  for (i in 1:p){
-    ncumx[i] <- length(which(XX==i-1))
-  }
-  ncum <- cumsum(ncumx)
-  ng <- diff(c(0,ncum))
-  sortx <- sort(X, index.return=T)
-  Xs <- sortx$x
-  ind <- sortx$ix
-  Ys <- Y[ind,]
-  Zs <- Z[ind,]
   
-  m <- genv(X, Y, Z, u)
-  Sigma <- m$Sigma
-  Gamma <- m$Gamma
-  Gamma0 <- m$Gamma0
-  Omega <- m$Omega
-  Omega0 <- m$Omega0
-  eta <- m$eta
-  
-  xx <- list(length=p)
-  for(i in 1:p){
-    if(i>1){
-      xx[[i]] <- cov(Zs[((ncum[i-1]+1):ncum[i]),])
-    }else{
-      xx[[i]] <- cov(Zs[(1:ncum[i]),])
-    }
-  }
-  
-  if(u==0){
-    
-    asySEmu <- NULL
-    asySEbeta <- NULL
-    
-  }else if (u==r){
-    
-    asymu=asybeta <- list(length=p)
-    semu <- matrix(rep(0, r*p), ncol=p)
-    sebeta = asySEbeta <- list(length=p)
-    for(i in 1:p){
-      asymu[[i]] <- n*Sigma[[i]]/ng[[i]]
-      asybeta[[i]] <- n*kronecker(solve(xx[[i]]), Omega[[i]])/ng[i]
-      semu[,i] <- diag(asymu[[i]])
-      sebeta[[i]] <- diag(asybeta[[i]])
-      asySEbeta[[i]] <- matrix(sqrt(sebeta[[i]]), ncol=c) 
-    }
-    
-    asySEmu <- sqrt(semu)
-    
+  if(u<0 | u>r){
+    print("u should be an interger between 0 and r")
+    skip<-1
   }else{
-    
-    asymu=asybeta <- list(length=p)
-    semu <- matrix(rep(0, r*p), ncol=p)
-    sebeta = asySEbeta <- list(length=p)
-    bb <- matrix(rep(0, u*(r-u)*u*(r-u)), ncol=u*(r-u))
-    for(i in 1:p){
-      b <- kronecker(eta[[i]]%*%xx[[i]]%*%t(eta[[i]]), solve(Omega0))+
-        kronecker(Omega[[i]], solve(Omega0))+
-        kronecker(solve(Omega[[i]]), Omega0)-
-        2*kronecker(diag(u), diag(r-u))
-      bb <- bb + ng[i]*b/n
-    }
-    for(i in 1:p){
-      asymu[[i]] <- n*Sigma[[i]]/ng[[i]]
-      aux <- kronecker(t(eta[[i]]), Gamma0)%*%solve(bb)%*%kronecker(eta[[i]], t(Gamma0))
-      asybeta[[i]] <- n*kronecker(solve(xx[[i]]), Gamma%*%Omega[[i]]%*%t(Gamma))/ng[i] + aux
-      semu[,i] <- diag(asymu[[i]])
-      sebeta[[i]] <- diag(asybeta[[i]])
-      asySEbeta[[i]] <- matrix(sqrt(sebeta[[i]]), ncol=c) 
-    }
-    
-    asySEmu <- sqrt(semu)
-    
+    skip<-0
+  }
+  if (n<=c){
+    print("This works when p < n")
+    skip<-1
+  }else{
+    skip <-0
   }
   
-  return(list(asySEmu=asySEmu, asySEbeta=asySEbeta))
+  if(skip==0){
+    
+    ncumx <- c()
+    for (i in 1:p){
+      ncumx[i] <- length(which(XX==i-1))
+    }
+    ncum <- cumsum(ncumx)
+    ng <- diff(c(0,ncum))
+    sortx <- sort(X, index.return=T)
+    Xs <- sortx$x
+    ind <- sortx$ix
+    Ys <- Y[ind,]
+    Zs <- Z[ind,]
+    
+    m <- genv(X, Y, Z, u)
+    Sigma <- m$Sigma
+    Gamma <- m$Gamma
+    Gamma0 <- m$Gamma0
+    Omega <- m$Omega
+    Omega0 <- m$Omega0
+    eta <- m$eta
+    
+    xx <- list(length=p)
+    for(i in 1:p){
+      if(i>1){
+        xx[[i]] <- cov(Zs[((ncum[i-1]+1):ncum[i]),])
+      }else{
+        xx[[i]] <- cov(Zs[(1:ncum[i]),])
+      }
+    }
+    
+    if(u==0){
+      
+      asySEmu <- NULL
+      asySEbeta <- NULL
+      
+    }else if (u==r){
+      
+      asymu=asybeta <- list(length=p)
+      semu <- matrix(rep(0, r*p), ncol=p)
+      sebeta = asySEbeta <- list(length=p)
+      for(i in 1:p){
+        asymu[[i]] <- n*Sigma[[i]]/ng[[i]]
+        asybeta[[i]] <- n*kronecker(solve(xx[[i]]), Omega[[i]])/ng[i]
+        semu[,i] <- diag(asymu[[i]])
+        sebeta[[i]] <- diag(asybeta[[i]])
+        asySEbeta[[i]] <- matrix(sqrt(sebeta[[i]]), ncol=c) 
+      }
+      
+      asySEmu <- sqrt(semu)
+      
+    }else{
+      
+      asymu=asybeta <- list(length=p)
+      semu <- matrix(rep(0, r*p), ncol=p)
+      sebeta = asySEbeta <- list(length=p)
+      bb <- matrix(rep(0, u*(r-u)*u*(r-u)), ncol=u*(r-u))
+      for(i in 1:p){
+        b <- kronecker(eta[[i]]%*%xx[[i]]%*%t(eta[[i]]), solve(Omega0))+
+          kronecker(Omega[[i]], solve(Omega0))+
+          kronecker(solve(Omega[[i]]), Omega0)-
+          2*kronecker(diag(u), diag(r-u))
+        bb <- bb + ng[i]*b/n
+      }
+      for(i in 1:p){
+        asymu[[i]] <- n*Sigma[[i]]/ng[[i]]
+        aux <- kronecker(t(eta[[i]]), Gamma0)%*%solve(bb)%*%kronecker(eta[[i]], t(Gamma0))
+        asybeta[[i]] <- n*kronecker(solve(xx[[i]]), Gamma%*%Omega[[i]]%*%t(Gamma))/ng[i] + aux
+        semu[,i] <- diag(asymu[[i]])
+        sebeta[[i]] <- diag(asybeta[[i]])
+        asySEbeta[[i]] <- matrix(sqrt(sebeta[[i]]), ncol=c) 
+      }
+      
+      asySEmu <- sqrt(semu)
+      
+    }
+    
+    return(list(asySEmu=asySEmu, asySEbeta=asySEbeta))
+  }
 }
 
 
@@ -621,15 +659,25 @@ u_genv <- function(X, Y, Z) {
   c <- ncol(Z)
   p <- nlevels(XX)
   
-  paranum = loglik.seq <- c()
-  for (u in 0:r){
-    loglik.seq[u+1] <- genv(X, Y, Z, u)$loglik
-    paranum[u+1] <- p*r + p*u*c + u*(r-u) + p*u*(u+1)/2 + (r-u)*(r-u+1)/2
+  if (n<=c){
+    print("This works when p < n")
+    skip<-1
+  }else{
+    skip <-0
   }
-  bic.seq <- -2 * loglik.seq + log(n) * paranum
-  u.bic <- which.min(bic.seq) - 1
   
-  return(list(u.bic = u.bic, bic.seq = bic.seq))
+  if(skip==0){
+    
+    paranum = loglik.seq <- c()
+    for (u in 0:r){
+      loglik.seq[u+1] <- genv(X, Y, Z, u)$loglik
+      paranum[u+1] <- p*r + p*u*c + u*(r-u) + p*u*(u+1)/2 + (r-u)*(r-u+1)/2
+    }
+    bic.seq <- -2 * loglik.seq + log(n) * paranum
+    u.bic <- which.min(bic.seq) - 1
+    
+    return(list(u.bic = u.bic, bic.seq = bic.seq))
+  }
 }
 
 
@@ -641,45 +689,62 @@ boot_genv <- function(X, Y, Z, u, B) {
   r <- a[2]
   c <- ncol(Z)
   p <- nlevels(XX)
-  ncumx <- c()
-  for (i in 1:p){
-    ncumx[i] <- length(which(XX==i-1))
+  
+  if(u<0 | u>r){
+    print("u should be an interger between 0 and r")
+    skip<-1
+  }else{
+    skip<-0
   }
-  ncum <- cumsum(ncumx)
-  ng <- diff(c(0,ncum))
-  sortx <- sort(X, index.return=T)
-  Xs <- sortx$x
-  ind <- sortx$ix
+  if (n<=c){
+    print("This works when p < n")
+    skip<-1
+  }else{
+    skip <-0
+  }
   
-  fit <- genv(X, Y, Z, u)
-  Yfit <- fit$Yfit
-  res <- Y - Yfit
-  
-  bootgenv <- function(i) {
-    out <- list(length=p)
-    res.boot <- matrix(rep(0, n*r), ncol=r)
-    for (j in 1:p){
-      if(j>1){
-        res.boot[ind[(ncum[j-1]+1):ncum[j]],] <- res[sample(ind[(ncum[j-1]+1):ncum[j]], ng[j], replace=T),]
-      }else{
-        res.boot[ind[1:ncum[1]],] <- res[sample(ind[1:ncum[1]], ng[1], replace=T),]
+  if(skip==0){
+    
+    ncumx <- c()
+    for (i in 1:p){
+      ncumx[i] <- length(which(XX==i-1))
+    }
+    ncum <- cumsum(ncumx)
+    ng <- diff(c(0,ncum))
+    sortx <- sort(X, index.return=T)
+    Xs <- sortx$x
+    ind <- sortx$ix
+    
+    fit <- genv(X, Y, Z, u)
+    Yfit <- fit$Yfit
+    res <- Y - Yfit
+    
+    bootgenv <- function(i) {
+      out <- list(length=p)
+      res.boot <- matrix(rep(0, n*r), ncol=r)
+      for (j in 1:p){
+        if(j>1){
+          res.boot[ind[(ncum[j-1]+1):ncum[j]],] <- res[sample(ind[(ncum[j-1]+1):ncum[j]], ng[j], replace=T),]
+        }else{
+          res.boot[ind[1:ncum[1]],] <- res[sample(ind[1:ncum[1]], ng[1], replace=T),]
+        }
       }
+      Y.boot <- Yfit + res.boot
+      for(k in 1:p){
+        out[[k]] <- genv(X, Y.boot, Z, u)$beta[[k]]
+      }
+      return(out)
     }
-    Y.boot <- Yfit + res.boot
-    for(k in 1:p){
-      out[[k]] <- genv(X, Y.boot, Z, u)$beta[[k]]
+    
+    bootsebeta <- list(length=p)
+    for (k in 1:p){
+      out1 <- lapply(1:B, function(i) bootgenv(i)[[k]])
+      bootbeta <- matrix(unlist(out1), nrow = B, byrow = TRUE)
+      bootsebeta[[k]] <- matrix(apply(bootbeta, 2, sd), nrow = r)
     }
-    return(out)
+    
+    return(list(bootsebeta = bootsebeta))
   }
-  
-  bootsebeta <- list(length=p)
-  for (k in 1:p){
-    out1 <- lapply(1:B, function(i) bootgenv(i)[[k]])
-    bootbeta <- matrix(unlist(out1), nrow = B, byrow = TRUE)
-    bootsebeta[[k]] <- matrix(apply(bootbeta, 2, sd), nrow = r)
-  }
-  
-  return(list(bootsebeta = bootsebeta))
   
 }
 
@@ -693,43 +758,59 @@ cv_genv <- function(X, Y, Z, u, m, nperm){
   c <- ncol(Z)
   p <- nlevels(XX)
   
-  prederr <- matrix(rep(0, m*nperm), ncol = nperm)
-  PE <- rep(0, nperm)
-  for (i in 1:nperm)	{
-    id <- sample(n, n)
-    Xn <- X[id]
-    Yn <- Y[id, ]
-    Zn <- Z[id, ]
-    for (j in 1:m) {
-      id.test <- (floor((j - 1) * n / m) + 1) : ceiling(j * n / m)
-      id.train <- setdiff(1:n, id.test)
-      X.train <- Xn[id.train]
-      Y.train <- Yn[id.train, ]
-      Z.train <- Zn[id.train, ]
-      X.test <- Xn[id.test]
-      Y.test <- Yn[id.test, ]
-      Z.test <- Zn[id.test, ]
-      n.test <- length(id.test)
-      
-      fit <- genv(X.train, Y.train, Z.train, u)
-      betahat <- fit$beta
-      muhat <- fit$mu
-      
-      testn <- length(id.test)
-      traceres <- 0
-      for(l in 1:testn){
-        iG <- X.test[l]+1
-        resi <- Y.test[l,] - t(muhat[,iG]) - Z.test[l,]%*%t(betahat[[iG]])
-        traceres <- traceres + resi%*%t(resi)
-      }
-      
-      prederr[j, i] <- traceres
-    }
-    PE[i] <- sqrt(sum(prederr[,i])/n)
+  if(u<0 | u>r){
+    print("u should be an interger between 0 and r")
+    skip<-1
+  }else{
+    skip<-0
+  }
+  if (n<=c){
+    print("This works when p < n")
+    skip<-1
+  }else{
+    skip <-0
   }
   
-  out <- mean(PE)
-  return(out)
+  if(skip==0){
+    
+    prederr <- matrix(rep(0, m*nperm), ncol = nperm)
+    PE <- rep(0, nperm)
+    for (i in 1:nperm)	{
+      id <- sample(n, n)
+      Xn <- X[id]
+      Yn <- Y[id, ]
+      Zn <- Z[id, ]
+      for (j in 1:m) {
+        id.test <- (floor((j - 1) * n / m) + 1) : ceiling(j * n / m)
+        id.train <- setdiff(1:n, id.test)
+        X.train <- Xn[id.train]
+        Y.train <- Yn[id.train, ]
+        Z.train <- Zn[id.train, ]
+        X.test <- Xn[id.test]
+        Y.test <- Yn[id.test, ]
+        Z.test <- Zn[id.test, ]
+        n.test <- length(id.test)
+        
+        fit <- genv(X.train, Y.train, Z.train, u)
+        betahat <- fit$beta
+        muhat <- fit$mu
+        
+        testn <- length(id.test)
+        traceres <- 0
+        for(l in 1:testn){
+          iG <- X.test[l]+1
+          resi <- Y.test[l,] - t(muhat[,iG]) - Z.test[l,]%*%t(betahat[[iG]])
+          traceres <- traceres + resi%*%t(resi)
+        }
+        
+        prederr[j, i] <- traceres
+      }
+      PE[i] <- sqrt(sum(prederr[,i])/n)
+    }
+    
+    out <- mean(PE)
+    return(out)
+  }
   
 }
 

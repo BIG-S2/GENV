@@ -17,7 +17,7 @@ u_genv(X, Y, Z)
 
 \arguments{
   \item{X}{
-  Group indicator vector of length \eqn{n}, where \eqn{n} 
+  A group indicator vector of length \eqn{n}, where \eqn{n} 
   denotes the number of observations.
   }
   \item{Y}{
@@ -26,7 +26,7 @@ u_genv(X, Y, Z)
   }
   \item{Z}{
   An \eqn{n} by \eqn{p} matrix of predictors, where \eqn{p} is the 
-  number of predictors.
+  number of predictors with \eqn{p < n}.
   }
 }
 

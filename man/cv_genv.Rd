@@ -18,7 +18,7 @@ cv_genv(X, Y, Z, u, m, nperm)
 
 \arguments{
   \item{X}{
-  Group indicator vector of length \eqn{n}, where \eqn{n}  
+  A group indicator vector of length \eqn{n}, where \eqn{n}  
   denotes the number of observations.
   }
   \item{Y}{
@@ -27,10 +27,11 @@ cv_genv(X, Y, Z, u, m, nperm)
   }
   \item{Z}{
   An \eqn{n} by \eqn{p} matrix of predictors, where \eqn{p} is the 
-  number of predictors.
+  number of predictors with \eqn{p <n}.
   }
   \item{u}{
-  A given dimension of the groupwise envelope space.
+  A given dimension of the groupwise envelope space.  It should 
+  be an interger between \eqn{0} and \eqn{r}.
   }
   \item{m}{
   A positive integer that is used to indicate \code{m}-fold cross 
